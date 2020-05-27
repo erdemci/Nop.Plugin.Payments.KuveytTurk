@@ -96,7 +96,7 @@ namespace Nop.Plugin.Payments.KuveytTurk.Controllers
             var err = _localizationService.GetResource(_kuveytTurkService.GetErrorMessage(model.ResponseCode));
 
             //Send warning notification to user about error message
-            _notificationService.WarningNotification($"{model.ResponseCode} - {err}({model.ResponseMessage})");
+            _notificationService.WarningNotification($"{err} ({model.ResponseCode} - {model.ResponseMessage})");
 
             //Repeate the order then delete it
             var order = _orderService.GetOrderByGuid(Guid.Parse(model.MerchantOrderId));

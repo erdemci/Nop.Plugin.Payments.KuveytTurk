@@ -12,19 +12,19 @@ namespace Nop.Plugin.Payments.KuveytTurk.Infrastructure
         /// <summary>
         /// Register routes
         /// </summary>
-        /// <param name="endpointRouteBuilder">Route builder</param>
-        public void RegisterRoutes(IEndpointRouteBuilder endpointRouteBuilder)
+        /// <param name="routeBuilder">Route builder</param>
+        public void RegisterRoutes(IRouteBuilder routeBuilder)
         {
-            endpointRouteBuilder.MapControllerRoute(KuveytTurkDefaults.Payment, "Plugins/PaymentKuveytTurk/Payment",
+            routeBuilder.MapRoute(KuveytTurkDefaults.Payment, "Plugins/PaymentKuveytTurk/Payment",
                  new { controller = "PaymentKuveytTurk", action = "Payment" });
 
-            endpointRouteBuilder.MapControllerRoute(KuveytTurkDefaults.Fail, "Plugins/PaymentKuveytTurk/Fail",
+            routeBuilder.MapRoute(KuveytTurkDefaults.Fail, "Plugins/PaymentKuveytTurk/Fail",
                  new { controller = "PaymentKuveytTurk", action = "Fail" });
 
-            endpointRouteBuilder.MapControllerRoute(KuveytTurkDefaults.Approval, "Plugins/PaymentKuveytTurk/Approval",
+            routeBuilder.MapRoute(KuveytTurkDefaults.Approval, "Plugins/PaymentKuveytTurk/Approval",
                  new { controller = "PaymentKuveytTurk", action = "Approval" });
 
-            endpointRouteBuilder.MapControllerRoute(KuveytTurkDefaults.SendApprove, "Plugins/PaymentKuveytTurk/SendApprove",
+            routeBuilder.MapRoute(KuveytTurkDefaults.SendApprove, "Plugins/PaymentKuveytTurk/SendApprove",
                  new { controller = "PaymentKuveytTurk", action = "SendApprove" });
 
         }

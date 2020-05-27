@@ -25,7 +25,6 @@ using Nop.Services.Payments;
 using Nop.Services.Plugins;
 using Nop.Services.Security;
 using Nop.Web.Framework.Mvc.Filters;
-using Ubiety.Dns.Core;
 
 namespace Nop.Plugin.Payments.KuveytTurk
 {
@@ -45,7 +44,6 @@ namespace Nop.Plugin.Payments.KuveytTurk
         private readonly IWebHelper _webHelper;
         private readonly IEncryptionService _encryptionService;
         private readonly ICustomerService _customerService;
-        private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly INopFileProvider _nopFileProvider;
         private readonly KuveytTurkService _kuveytTurkService;
         private readonly KuveytTurkPaymentSettings _kuveytTurkPaymentSettings;
@@ -63,7 +61,6 @@ namespace Nop.Plugin.Payments.KuveytTurk
             IWebHelper webHelper,
             IEncryptionService encryptionService,
             ICustomerService customerService,
-            IWebHostEnvironment webHostEnvironment,
             INopFileProvider nopFileProvider,
             KuveytTurkService kuveytTurkService,
             KuveytTurkPaymentSettings twoCheckoutPaymentSettings)
@@ -77,7 +74,6 @@ namespace Nop.Plugin.Payments.KuveytTurk
             _webHelper = webHelper;
             _encryptionService = encryptionService;
             _customerService = customerService;
-            _webHostEnvironment = webHostEnvironment;
             _nopFileProvider = nopFileProvider;
             _kuveytTurkService = kuveytTurkService;
             _kuveytTurkPaymentSettings = twoCheckoutPaymentSettings;
