@@ -36,51 +36,31 @@ namespace Nop.Plugin.Payments.KuveytTurk
     {
         #region Fields
 
-        private readonly CurrencySettings _currencySettings;
-        private readonly ICurrencyService _currencyService;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ILocalizationService _localizationService;
-        private readonly IPaymentService _paymentService;
         private readonly ISettingService _settingService;
         private readonly IWebHelper _webHelper;
         private readonly IEncryptionService _encryptionService;
-        private readonly ICustomerService _customerService;
-        private readonly IWebHostEnvironment _webHostEnvironment;
-        private readonly INopFileProvider _nopFileProvider;
         private readonly KuveytTurkService _kuveytTurkService;
-        private readonly KuveytTurkPaymentSettings _kuveytTurkPaymentSettings;
 
         #endregion
 
         #region Ctor
 
-        public KuveytTurkPaymentProcessor(CurrencySettings currencySettings,
-            ICurrencyService currencyService,
+        public KuveytTurkPaymentProcessor(
             IHttpContextAccessor httpContextAccessor,
             ILocalizationService localizationService,
-            IPaymentService paymentService,
             ISettingService settingService,
             IWebHelper webHelper,
             IEncryptionService encryptionService,
-            ICustomerService customerService,
-            IWebHostEnvironment webHostEnvironment,
-            INopFileProvider nopFileProvider,
-            KuveytTurkService kuveytTurkService,
-            KuveytTurkPaymentSettings twoCheckoutPaymentSettings)
+            KuveytTurkService kuveytTurkService)
         {
-            _currencySettings = currencySettings;
-            _currencyService = currencyService;
             _httpContextAccessor = httpContextAccessor;
             _localizationService = localizationService;
-            _paymentService = paymentService;
             _settingService = settingService;
             _webHelper = webHelper;
             _encryptionService = encryptionService;
-            _customerService = customerService;
-            _webHostEnvironment = webHostEnvironment;
-            _nopFileProvider = nopFileProvider;
             _kuveytTurkService = kuveytTurkService;
-            _kuveytTurkPaymentSettings = twoCheckoutPaymentSettings;
         }
 
         #endregion
@@ -113,6 +93,8 @@ namespace Nop.Plugin.Payments.KuveytTurk
             var creditCardExpirationMonth = _encryptionService.DecryptText(postProcessPaymentRequest.Order.CardExpirationMonth);
             var creditCardCvv2 = _encryptionService.DecryptText(postProcessPaymentRequest.Order.CardCvv2);
 
+            var amont = _kuveytTurkService.GetTryAmount(postProcessPaymentRequest.Order.OrderTotal, postProcessPaymentRequest.Order.CustomerCurrencyCode);
+
             //Save details in an object
             var processPaymentRequest = new ProcessPaymentRequest
             {
@@ -122,7 +104,7 @@ namespace Nop.Plugin.Payments.KuveytTurk
                 CreditCardExpireMonth = Convert.ToInt32(creditCardExpirationMonth),
                 CreditCardCvv2 = creditCardCvv2,
                 OrderGuid = postProcessPaymentRequest.Order.OrderGuid,
-                OrderTotal = postProcessPaymentRequest.Order.OrderTotal,
+                OrderTotal = amont,
             };
 
             //Convert data from ProcessPaymentRequest to Xml object

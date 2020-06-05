@@ -1,18 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
+using System.Xml;
 using System.Xml.Serialization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Primitives;
 using Nop.Core;
 using Nop.Core.Domain.Orders;
+using Nop.Core.Http;
 using Nop.Core.Infrastructure;
 using Nop.Plugin.Payments.KuveytTurk.Models;
 using Nop.Services.Customers;
+using Nop.Services.Directory;
 using Nop.Services.Localization;
+using Nop.Services.Logging;
 using Nop.Services.Payments;
 
 namespace Nop.Plugin.Payments.KuveytTurk.Services
@@ -20,25 +27,31 @@ namespace Nop.Plugin.Payments.KuveytTurk.Services
     public class KuveytTurkService
     {
         private readonly IWebHelper _webHelper;
+        private readonly IHttpClientFactory _httpClientFactory;
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly INopFileProvider _nopFileProvider;
         private readonly IWorkContext _workContext;
         private readonly ILocalizationService _localizationService;
+        private readonly ILogger _logger;
         private readonly KuveytTurkPaymentSettings _kuveytTurkPaymentSettings;
 
         public KuveytTurkService(
             IWebHelper webHelper,
+            IHttpClientFactory httpClientFactory,
             IWebHostEnvironment webHostEnvironment,
             INopFileProvider nopFileProvider,
             IWorkContext workContext,
             ILocalizationService localizationService,
+            ILogger logger,
             KuveytTurkPaymentSettings kuveytTurkPaymentSettings)
         {
             _webHelper = webHelper;
+            _httpClientFactory = httpClientFactory;
             _webHostEnvironment = webHostEnvironment;
             _nopFileProvider = nopFileProvider;
             _workContext = workContext;
             _localizationService = localizationService;
+            _logger = logger;
             _kuveytTurkPaymentSettings = kuveytTurkPaymentSettings;
         }
 
@@ -208,6 +221,76 @@ namespace Nop.Plugin.Payments.KuveytTurk.Services
             return model;
         }
 
+        public decimal GetTryAmount(decimal amount, string exchangeRateCurrencyCode)
+        {
+            var safe = 0.95m;
+
+            if (exchangeRateCurrencyCode == null)
+                throw new ArgumentNullException(nameof(exchangeRateCurrencyCode));
+
+            //add euro with rate 1
+            var ratesToEuro = new List<Core.Domain.Directory.ExchangeRate>
+            {
+                new Core.Domain.Directory.ExchangeRate
+                {
+                    CurrencyCode = "EUR",
+                    Rate = 1,
+                    UpdatedOn = DateTime.UtcNow
+                }
+            };
+
+            //get exchange rates to euro from European Central Bank
+            try
+            {
+                var httpClient = _httpClientFactory.CreateClient(NopHttpDefaults.DefaultHttpClient);
+                var stream = httpClient.GetStreamAsync("http://www.ecb.int/stats/eurofxref/eurofxref-daily.xml").Result;
+
+                //load XML document
+                var document = new XmlDocument();
+                document.Load(stream);
+
+                //add namespaces
+                var namespaces = new XmlNamespaceManager(document.NameTable);
+                namespaces.AddNamespace("ns", "http://www.ecb.int/vocabulary/2002-08-01/eurofxref");
+                namespaces.AddNamespace("gesmes", "http://www.gesmes.org/xml/2002-08-01");
+
+                //get daily rates
+                var dailyRates = document.SelectSingleNode("gesmes:Envelope/ns:Cube/ns:Cube", namespaces);
+                if (!DateTime.TryParseExact(dailyRates.Attributes["time"].Value, "yyyy-MM-dd", null, DateTimeStyles.None, out var updateDate))
+                    updateDate = DateTime.UtcNow;
+
+                foreach (XmlNode currency in dailyRates.ChildNodes)
+                {
+                    //get rate
+                    if (!decimal.TryParse(currency.Attributes["rate"].Value, out var currencyRate))
+                        continue;
+
+                    ratesToEuro.Add(new Core.Domain.Directory.ExchangeRate()
+                    {
+                        CurrencyCode = currency.Attributes["currency"].Value,
+                        Rate = (currency.Attributes["currency"].Value.ToUpper() != "TRY") ? currencyRate : currencyRate * safe,
+                        UpdatedOn = updateDate
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("ECB exchange rate provider in KuveytTurk Plugin", ex);
+            }
+
+            //use only currencies that are supported by ECB
+            //Get TRY Exchange Rate
+            var exchangeRateTRY = ratesToEuro.FirstOrDefault(rate => rate.CurrencyCode.Equals("try", StringComparison.InvariantCultureIgnoreCase));
+            if (exchangeRateTRY == null)
+                throw new NopException(_localizationService.GetResource("Plugins.ExchangeRate.EcbExchange.Error"));
+
+            var exchangeRate = ratesToEuro
+                .FirstOrDefault(rate => rate.CurrencyCode.Equals(exchangeRateCurrencyCode, StringComparison.InvariantCultureIgnoreCase));
+            if (exchangeRate == null)
+                throw new NopException(_localizationService.GetResource("Plugins.ExchangeRate.EcbExchange.Error"));
+
+            return Math.Round(exchangeRateTRY.Rate * amount * exchangeRate.Rate, 4);
+        }
 
         /// <summary>
         /// Get Error Message from Localization Service
